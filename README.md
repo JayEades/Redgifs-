@@ -1,1 +1,80 @@
-# Redgifs-
+import os
+import re
+import requests
+
+modelname = "Example"
+
+client_id = 'YOUR_REDGIFS_CLIENT_ID'
+client_secret = 'YOUR_REDGIFS_CLIENT_SECRET'
+
+keyword_files = {
+    'example': [r'G:\example'.format(modelname), r'G:\example'.format(modelname)],
+    'example1': [r'G:\example'.format(modelname), r'G:\example'.format(modelname)],
+    'example2': [r'G:\example'.format(modelname), r'G:\example'.format(modelname)]
+}
+
+image_folder = r'G:\example'.format(modelname)
+uploaded_images_file = 'uploaded_images.txt'
+
+pattern = r'(example|example1|example2)'
+
+uploaded_images = set()
+if os.path.isfile(uploaded_images_file):
+    with open(uploaded_images_file, 'r') as f:
+        for line in f:
+            uploaded_images.add(line.strip())
+
+auth_url = 'https://api.redgifs.com/v1/oauth/token'
+auth_data = {
+    'grant_type': 'client_credentials',
+    'client_id': client_id,
+    'client_secret': client_secret
+}
+auth_response = requests.post(auth_url, data=auth_data)
+if auth_response.status_code == 200:
+    access_token = auth_response.json()['access_token']
+else:
+    print('Failed to obtain access token:', auth_response.text)
+    exit()
+
+for filename in os.listdir(image_folder):
+    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.mp4', '.mp3')):
+        if filename in uploaded_images:
+            print(f'{filename} has already been uploaded')
+            continue
+
+        match = re.search(pattern, filename, re.IGNORECASE)
+        if match:
+            keyword = match.group(1)
+
+            headers = {
+                'Authorization': 'Bearer ' + access_token
+            }
+            url = 'https://api.redgifs.com/v1/gfycats'
+            files = {'file': open(os.path.join(image_folder, filename), 'rb')}
+            response = requests.post(url, headers=headers, files=files)
+            if response.status_code == 200:
+                response_json = response.json()
+                image_link = response_json['gfyname']
+
+                for file in keyword_files[keyword]:
+                    with open(file, 'r') as f:
+                        if image_link in f.read():
+                            continue
+                    with open(file, 'a') as f:
+                        f.write(image_link + '\n')
+
+                if keyword == 'example':
+                    for file in keyword_files['example1'] + keyword_files['example2']:
+                        with open(file, 'r') as f:
+                            if image_link in f.read():
+                                continue
+                        with open(file, 'a') as f:
+                            f.write(image_link + '\n')
+
+                uploaded_images.add(filename)
+                with open(uploaded_images_file, 'a') as f:
+                    f.write(filename + '\n')
+
+print('Done')
+
