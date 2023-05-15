@@ -1,80 +1,27 @@
-import os
-import re
-import requests
+This code is meant to upload images or videos to RedGifs and categorize them into different files based on keywords in their title. Here's a breakdown of what the code does:
 
-modelname = "Example"
+It imports the necessary modules and initializes variables, including the RedGifs client credentials, file paths, and patterns for categorization.
 
-client_id = 'YOUR_REDGIFS_CLIENT_ID'
-client_secret = 'YOUR_REDGIFS_CLIENT_SECRET'
+It creates a set called uploaded_images and populates it with the filenames stored in the uploaded_images.txt file (if it exists).
 
-keyword_files = {
-    'example': [r'G:\example'.format(modelname), r'G:\example'.format(modelname)],
-    'example1': [r'G:\example'.format(modelname), r'G:\example'.format(modelname)],
-    'example2': [r'G:\example'.format(modelname), r'G:\example'.format(modelname)]
-}
+It iterates over the files in the specified image_folder.
 
-image_folder = r'G:\example'.format(modelname)
-uploaded_images_file = 'uploaded_images.txt'
+For each file, it checks if the file extension is in the allowed list (images: .png, .jpg, .jpeg, .gif, videos: .mp4, audios: .mp3).
 
-pattern = r'(example|example1|example2)'
+If the file has already been uploaded (based on its filename being present in the uploaded_images set), it skips to the next file.
 
-uploaded_images = set()
-if os.path.isfile(uploaded_images_file):
-    with open(uploaded_images_file, 'r') as f:
-        for line in f:
-            uploaded_images.add(line.strip())
+It uses regular expressions to search for a pattern (either 'example', 'example1', or 'example2') in the filename. The pattern is case-insensitive.
 
-auth_url = 'https://api.redgifs.com/v1/oauth/token'
-auth_data = {
-    'grant_type': 'client_credentials',
-    'client_id': client_id,
-    'client_secret': client_secret
-}
-auth_response = requests.post(auth_url, data=auth_data)
-if auth_response.status_code == 200:
-    access_token = auth_response.json()['access_token']
-else:
-    print('Failed to obtain access token:', auth_response.text)
-    exit()
+If a match is found, it determines the keyword associated with the pattern.
 
-for filename in os.listdir(image_folder):
-    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.mp4', '.mp3')):
-        if filename in uploaded_images:
-            print(f'{filename} has already been uploaded')
-            continue
+It uploads the image to RedGifs using the client.upload_from_path() method and obtains the image link.
 
-        match = re.search(pattern, filename, re.IGNORECASE)
-        if match:
-            keyword = match.group(1)
+It iterates over the files corresponding to the keyword and checks if the image link is already present in each file. If the link exists, it continues to the next iteration. Otherwise, it appends the image link to the file.
 
-            headers = {
-                'Authorization': 'Bearer ' + access_token
-            }
-            url = 'https://api.redgifs.com/v1/gfycats'
-            files = {'file': open(os.path.join(image_folder, filename), 'rb')}
-            response = requests.post(url, headers=headers, files=files)
-            if response.status_code == 200:
-                response_json = response.json()
-                image_link = response_json['gfyname']
+If the keyword is 'example', it repeats the above step for the files associated with the 'example1' and 'example2' keywords.
 
-                for file in keyword_files[keyword]:
-                    with open(file, 'r') as f:
-                        if image_link in f.read():
-                            continue
-                    with open(file, 'a') as f:
-                        f.write(image_link + '\n')
+It adds the current filename to the uploaded_images set and appends it to the uploaded_images.txt file.
 
-                if keyword == 'example':
-                    for file in keyword_files['example1'] + keyword_files['example2']:
-                        with open(file, 'r') as f:
-                            if image_link in f.read():
-                                continue
-                        with open(file, 'a') as f:
-                            f.write(image_link + '\n')
+Once all the files in the image_folder have been processed, it prints 'Done' indicating the completion of the script.
 
-                uploaded_images.add(filename)
-                with open(uploaded_images_file, 'a') as f:
-                    f.write(filename + '\n')
-
-print('Done')
-
+Overall, the code uploads images/videos to RedGifs and categorizes them into different files based on keywords found in their titles, while keeping track of uploaded images to avoid duplications.
